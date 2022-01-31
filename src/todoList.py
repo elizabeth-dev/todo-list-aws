@@ -4,7 +4,7 @@ import time
 import uuid
 import json
 import functools
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 
 
 def get_table(dynamodb=None):
@@ -94,8 +94,12 @@ def update_item(key, text, checked, dynamodb=None):
             ReturnValues='ALL_NEW',
         )
 
+    except EndpointConnectionError as e:
+        print(e)
     except ClientError as e:
         print(e.response['Error']['Message'])
+    except AttributeError as e:
+        print(e)
     else:
         return result['Attributes']
 
