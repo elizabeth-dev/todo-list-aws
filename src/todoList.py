@@ -146,3 +146,36 @@ def create_todo_table(dynamodb):
         raise AssertionError()
 
     return table
+
+def detect_lang(text, comprehend=None):
+    if not comprehend:
+        comprehend = boto3.client(service_name='comprehend')
+
+    lang = sorted(comprehend.detect_dominant_language(Text = text)['Languages'], key=lambda item: (item['Score']), reverse=True)[0]['LanguageCode']
+    return lang
+
+def translate_text(text, src_lang, target_lang, translate=None):
+    if not translate:
+        translate = boto3.client(service_name='translate', use_ssl=True)
+
+    result = translate.translate_text(Text=text, SourceLanguageCode=src_lang, TargetLanguageCode=target_lang)['TranslatedText']
+    return result
+
+def translate_item(key, target_lang, comprehend=None, translate=None):
+    try:
+        item = get_item(key)
+
+        if not item:
+            return
+
+        src_lang = detect_lang(item['text'])
+        translated_text = translate_text(item['text'], src_lang, target_lang)
+        item['text'] = translated_text
+        result = item
+
+    except ClientError as e:
+        print(e.response['Error']['Message'])
+    else:
+        print('Result translateItem:'+str(result))
+        return result
+
