@@ -7,6 +7,25 @@ import sys
 import os
 import json
 
+
+class FakeComprehend:
+    def detect_dominant_language(self, Text):
+        return {
+            "Languages": [
+                {
+                    "LanguageCode": "es",
+                    "Score": 1
+                }
+            ]
+        }
+
+class FakeTranslate:
+    def translate_text(self, Text, SourceLanguageCode, TargetLanguageCode):
+        return {
+            "TranslatedText": "Hello World"
+        }
+
+
 @mock_dynamodb2
 class TestDatabaseFunctions(unittest.TestCase):
     def setUp(self):
@@ -26,6 +45,8 @@ class TestDatabaseFunctions(unittest.TestCase):
             message="Using or importing.*")
         """Create the mock database and table"""
         self.dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        self.comprehend = FakeComprehend()
+        self.translate = FakeTranslate()
         self.is_local = 'true'
         self.uuid = "123e4567-e89b-12d3-a456-426614174000"
         self.text = "Aprender DevOps y Cloud en la UNIR"
@@ -57,7 +78,7 @@ class TestDatabaseFunctions(unittest.TestCase):
         self.assertIn(tableName, self.table.name)
         #self.assertIn('todoTable', self.table_local.name)
         print ('End: test_table_exists')
-        
+
 
     def test_put_todo(self):
         print ('---------------------')
@@ -104,7 +125,7 @@ class TestDatabaseFunctions(unittest.TestCase):
             self.text,
             responseGet['text'])
         print ('End: test_get_todo')
-    
+
     def test_list_todo(self):
         print ('---------------------')
         print ('Start: test_list_todo')
@@ -199,6 +220,32 @@ class TestDatabaseFunctions(unittest.TestCase):
         # Testing file functions
         self.assertRaises(TypeError, delete_item("", self.dynamodb))
         print ('End: test_delete_todo_error')
+
+    def test_translate_todo(self):
+        print ('---------------------')
+        print ('Start: test_translate_todo')
+        from src.todoList import translate_item
+        from src.todoList import put_item
+
+        # Testing file functions
+        # Table mock
+        responsePut = put_item(self.text, self.dynamodb)
+        print ('Response put_item:' + str(responsePut))
+        idItem = json.loads(responsePut['body'])['id']
+        print ('Id item:' + idItem)
+        self.assertEqual(200, responsePut['statusCode'])
+
+        responseTranslate = translate_item(
+                idItem,
+                "en",
+                self.dynamodb,
+                self.comprehend,
+                self.translate)
+        print ('Response Translate:' + str(responseTranslate))
+        self.assertEqual(
+            "Hello World",
+            responseTranslate['text'])
+        print ('End: test_translate_todo')
 
 
 

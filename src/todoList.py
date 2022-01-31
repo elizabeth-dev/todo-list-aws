@@ -161,15 +161,15 @@ def translate_text(text, src_lang, target_lang, translate=None):
     result = translate.translate_text(Text=text, SourceLanguageCode=src_lang, TargetLanguageCode=target_lang)['TranslatedText']
     return result
 
-def translate_item(key, target_lang, comprehend=None, translate=None):
+def translate_item(key, target_lang, dynamodb=None, comprehend=None, translate=None):
     try:
-        item = get_item(key)
+        item = get_item(key, dynamodb)
 
         if not item:
             return
 
-        src_lang = detect_lang(item['text'])
-        translated_text = translate_text(item['text'], src_lang, target_lang)
+        src_lang = detect_lang(item['text'], comprehend)
+        translated_text = translate_text(item['text'], src_lang, target_lang, translate)
         item['text'] = translated_text
         result = item
 
